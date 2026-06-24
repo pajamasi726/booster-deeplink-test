@@ -21,11 +21,11 @@
   .tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;margin:2px 4px 2px 0}
   .on{background:#e6f7ec;color:#0a7d39} .off{background:#f3f3f5;color:#999}
   #log{font-family:ui-monospace,monospace;font-size:11px;background:#1c1c1e;color:#4ade80;border-radius:8px;padding:10px;min-height:120px;white-space:pre-wrap;word-break:break-all}
-  .t{color:#888}
+  .hint{font-size:11px;color:var(--ink2);margin:4px 0 0}
 </style>
 </head>
 <body>
-<h1>리뷰 딥링크 테스트 🧪</h1>
+<h1>리뷰 딥링크 테스트 🧪 <span style="font-size:11px;color:#999">v2</span></h1>
 <p class="sub">카톡으로 이 링크를 본인에게 보내 → 카톡 안에서 열고 → 버튼을 눌러 로그를 확인하세요.</p>
 
 <div class="card">
@@ -35,9 +35,10 @@
 </div>
 
 <div class="card">
-  <h2>플레이스 ID (테스트할 것만 입력)</h2>
-  <label>네이버 placeId (지도 URL의 숫자)</label>
-  <input id="nid" placeholder="예: 1234567890" inputmode="numeric">
+  <h2>플레이스 입력 (테스트할 것만)</h2>
+  <label>네이버 — placeId(숫자) 또는 전체 URL(공유 링크)</label>
+  <input id="nid" placeholder="1234567890  또는  https://naver.me/xxxx">
+  <p class="hint">네이버앱에서 병원 → 공유 → URL복사 한 걸 그대로 붙여넣어도 됩니다.</p>
   <label>구글 placeId (writereview용)</label>
   <input id="gid" placeholder="예: ChIJ...">
   <label>카카오맵 placeId</label>
@@ -53,7 +54,7 @@
   <h2>② 네이버 리뷰</h2>
   <button class="b-naver" onclick="start('naver')">⭐ 스마트 라우팅 (탈출→앱/웹)</button>
   <button class="b-line" onclick="routeNow('naver')">앱 스킴 직접 시도</button>
-  <button class="b-line" onclick="webOnly('naver')">웹(m.place)만 열기</button>
+  <button class="b-line" onclick="webOnly('naver')">웹만 열기</button>
 </div>
 
 <div class="card">
@@ -72,58 +73,51 @@
   var isKakao = /KAKAOTALK/i.test(UA);
   var isIOS = /iPhone|iPad|iPod/i.test(UA);
   var isAOS = /Android/i.test(UA);
-  var NAVER_PKG = "com.nhn.android.search";
 
   function log(m){var l=document.getElementById('log');var t=new Date().toLocaleTimeString();l.textContent="["+t+"] "+m+"\n"+l.textContent;}
   function tag(on,name){return '<span class="tag '+(on?'on':'off')+'">'+name+': '+(on?'YES':'no')+'</span>';}
-
-  // 입력값 ↔ URL 쿼리 동기화(탈출 후에도 ID 유지)
-  function ids(){return {nid:val('nid'),gid:val('gid'),kid:val('kid')};}
   function val(id){return (document.getElementById(id).value||'').trim();}
   function setVal(id,v){if(v)document.getElementById(id).value=v;}
+  function ids(){return {nid:val('nid'),gid:val('gid'),kid:val('kid')};}
+  function rawFor(t){var i=ids();return t==='naver'?i.nid:(t==='google'?i.gid:i.kid);}
+  function isUrl(s){return /^https?:\/\//i.test(s);}
 
-  function naverWeb(id){return "https://m.place.naver.com/hospital/"+id+"/review/visitor";}
-  function naverScheme(id){return "naversearchapp://inappbrowser?url="+encodeURIComponent(naverWeb(id))+"&target=new";}
-  function googleWeb(id){return "https://search.google.com/local/writereview?placeid="+id;}
-  function kakaoWeb(id){return "https://place.map.kakao.com/"+id;}
-  function kakaoScheme(id){return "kakaomap://place?id="+id;}
+  // 네이버: placeId면 지도 entry URL(카테고리 무관), URL이면 그대로
+  function naverWeb(raw){if(!raw)return"";return isUrl(raw)?raw:"https://map.naver.com/p/entry/place/"+raw;}
+  function naverScheme(raw){var w=naverWeb(raw);return w?"naversearchapp://inappbrowser?url="+encodeURIComponent(w)+"&target=new":"";}
+  function googleWeb(id){return id?"https://search.google.com/local/writereview?placeid="+id:"";}
+  function kakaoWeb(id){return id?"https://place.map.kakao.com/"+id:"";}
+  function kakaoScheme(id){return id?"kakaomap://place?id="+id:"";}
 
-  function webFor(t){var i=ids();if(t==='naver')return naverWeb(i.nid);if(t==='google')return googleWeb(i.gid);return kakaoWeb(i.kid);}
-  function schemeFor(t){var i=ids();if(t==='naver')return naverScheme(i.nid);if(t==='kakao')return kakaoScheme(i.kid);return googleWeb(i.gid);/*구글은 웹=유니버설*/}
+  function webFor(t){var i=ids();return t==='naver'?naverWeb(i.nid):(t==='google'?googleWeb(i.gid):kakaoWeb(i.kid));}
+  function schemeFor(t){var i=ids();return t==='naver'?naverScheme(i.nid):(t==='kakao'?kakaoScheme(i.kid):googleWeb(i.gid));}
 
-  // 실제 브라우저에서: 스킴 시도 → 1.2초 폴백
+  // 실브라우저에서: (구글은 웹=유니버설) 스킴 시도 → 1.2초 폴백
   function routeNow(t){
-    var web=webFor(t), sc=schemeFor(t);
-    if(!web){log("⚠️ "+t+" placeId를 먼저 입력하세요");return;}
+    if(!rawFor(t)){log("⚠️ "+t+" 값을 먼저 입력하세요");return;}
+    var web=webFor(t);
+    if(t==='google'){log("구글 리뷰 열기(유니버설): "+web);location.href=web;return;}
+    var sc=schemeFor(t);
     log("앱 스킴 시도: "+sc);
     var done=false;
     var timer=setTimeout(function(){if(!done){log("→ 앱 안 열림, 웹 폴백: "+web);location.href=web;}},1200);
     window.addEventListener('pagehide',function(){done=true;clearTimeout(timer);log("✅ 앱으로 전환됨(pagehide)");},{once:true});
     location.href=sc;
   }
-  function webOnly(t){var w=webFor(t);if(!w){log("⚠️ placeId 입력 필요");return;}log("웹만 열기: "+w);location.href=w;}
+  function webOnly(t){if(!rawFor(t)){log("⚠️ 값 입력 필요");return;}var w=webFor(t);log("웹만 열기: "+w);location.href=w;}
 
-  // 카톡이면 탈출 후 자동 라우팅, 아니면 바로 라우팅
+  // 카톡이면 무조건 먼저 탈출 → 실브라우저에서 자동 라우팅 (네이버도 동일)
   function start(t){
-    if(!webFor(t)){log("⚠️ "+t+" placeId를 먼저 입력하세요");return;}
+    if(!rawFor(t)){log("⚠️ "+t+" 값을 먼저 입력하세요");return;}
     if(isKakao){
       var i=ids();
-      var redirect=location.origin+location.pathname+"?go="+t+"&nid="+i.nid+"&gid="+i.gid+"&kid="+i.kid;
-      if(isAOS){
-        // 안드: intent 한 방 (앱→없으면 폴백). 네이버만 intent, 그 외는 탈출 후 처리
-        if(t==='naver'){
-          var web=naverWeb(i.nid);
-          var intent="intent://inappbrowser?url="+encodeURIComponent(web)+
-            "#Intent;scheme=naversearchapp;package="+NAVER_PKG+
-            ";S.browser_fallback_url="+encodeURIComponent(web)+";end";
-          log("안드 intent 시도(네이버앱→폴백)");location.href=intent;return;
-        }
-      }
-      log("카톡 감지 → 외부 브라우저로 탈출 후 자동 라우팅");
+      var redirect=location.origin+location.pathname+"?go="+t+
+        "&nid="+encodeURIComponent(i.nid)+"&gid="+encodeURIComponent(i.gid)+"&kid="+encodeURIComponent(i.kid);
+      log("카톡 감지 → 외부 브라우저로 탈출 후 자동 라우팅 ("+t+")");
       location.href="kakaotalk://web/openExternal?url="+encodeURIComponent(redirect);
       return;
     }
-    log("실브라우저 → 바로 라우팅");
+    log("실브라우저 → 바로 라우팅 ("+t+")");
     routeNow(t);
   }
 
@@ -133,14 +127,13 @@
     else{log("카톡이 아님(이미 브라우저). UA 확인하세요.");}
   }
 
-  // 초기화
   (function(){
     document.getElementById('ua').textContent=UA;
     document.getElementById('flags').innerHTML=tag(isKakao,'KakaoTalk')+tag(isIOS,'iOS')+tag(isAOS,'Android');
     var q=new URLSearchParams(location.search);
     setVal('nid',q.get('nid'));setVal('gid',q.get('gid'));setVal('kid',q.get('kid'));
-    if(q.get('escaped')){log("✅ 탈출 성공! 이 페이지가 외부 브라우저에서 열렸습니다. (UA에 KAKAOTALK 없으면 OK)");}
-    if(q.get('go')){var t=q.get('go');log("✅ 사파리/크롬으로 탈출됨 → 자동 라우팅: "+t);setTimeout(function(){routeNow(t);},600);}
+    if(q.get('escaped')){log("✅ 탈출 성공! 외부 브라우저에서 열림 (위 KakaoTalk: no 면 OK)");}
+    if(q.get('go')){var t=q.get('go');log("✅ 탈출됨 → 자동 라우팅: "+t);setTimeout(function(){routeNow(t);},600);}
   })();
 </script>
 </body>
