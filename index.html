@@ -25,7 +25,7 @@
 </style>
 </head>
 <body>
-<h1>리뷰 딥링크 테스트 🧪 <span style="font-size:11px;color:#999">v2</span></h1>
+<h1>리뷰 딥링크 테스트 🧪 <span style="font-size:11px;color:#999">v3</span></h1>
 <p class="sub">카톡으로 이 링크를 본인에게 보내 → 카톡 안에서 열고 → 버튼을 눌러 로그를 확인하세요.</p>
 
 <div class="card">
@@ -83,7 +83,7 @@
   function isUrl(s){return /^https?:\/\//i.test(s);}
 
   // 네이버: placeId면 지도 entry URL(카테고리 무관), URL이면 그대로
-  function naverWeb(raw){if(!raw)return"";return isUrl(raw)?raw:"https://map.naver.com/p/entry/place/"+raw;}
+  function naverWeb(raw){if(!raw)return"";return isUrl(raw)?raw:"https://m.place.naver.com/place/"+raw+"/review/visitor";}
   function naverScheme(raw){var w=naverWeb(raw);return w?"naversearchapp://inappbrowser?url="+encodeURIComponent(w)+"&target=new":"";}
   function googleWeb(id){return id?"https://search.google.com/local/writereview?placeid="+id:"";}
   function kakaoWeb(id){return id?"https://place.map.kakao.com/"+id:"";}
