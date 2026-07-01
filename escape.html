@@ -48,7 +48,7 @@
 <div class="card">
   <h2>플레이스 (샘플 채워둠)</h2>
   <label>네이버 placeId</label><input class="f" id="nid" placeholder="32240956">
-  <label>카카오 placeId</label><input class="f" id="kid" placeholder="10332413">
+  <label>카카오 placeId</label><input class="f" id="kid" placeholder="26567082">
   <label>구글 placeId</label><input class="f" id="gid" placeholder="ChIJ...">
 </div>
 
@@ -158,7 +158,7 @@
     document.getElementById('ua').textContent=UA;
     var q=new URLSearchParams(location.search);
     document.getElementById('nid').value=q.get('nid')||'32240956';
-    document.getElementById('kid').value=q.get('kid')||'10332413';
+    document.getElementById('kid').value=q.get('kid')||'26567082';
     document.getElementById('gid').value=q.get('gid')||'ChIJN1t_tDeuEmsRUsoyG83frY4';
     updateStatus();
     log('페이지 로드 · isKakao='+isKakao+(kakaoVer?(' v'+kakaoVer):'')+' · isIOS='+isIOS+' · isAOS='+isAOS+' · visibility='+document.visibilityState);
