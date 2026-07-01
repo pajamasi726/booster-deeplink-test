@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>외부 브라우저 탈출 테스트 v5</title>
+<style>
+  :root{--ink:#1c1c1e;--ink2:#666;--line:#e5e5e8;--naver:#03c75a;--google:#4285f4;--kakao:#ffcd00;--red:#e5484d}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,system-ui,'Apple SD Gothic Neo',sans-serif;color:var(--ink);background:#fafafa;padding:16px;line-height:1.5}
+  h1{font-size:18px;margin:0 0 4px}
+  .sub{font-size:12px;color:var(--ink2);margin:0 0 16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 14px}
+  .card h2{font-size:13px;color:var(--ink2);margin:0 0 10px;font-weight:600}
+  button{width:100%;padding:14px;border:0;border-radius:10px;font-size:15px;font-weight:700;margin:7px 0 0;color:#fff}
+  .b-esc{background:var(--red);font-size:17px;padding:16px} .b-naver{background:var(--naver)} .b-google{background:var(--google)}
+  .b-kakao{background:var(--kakao);color:#3c1e1e} .b-line{background:#fff;color:var(--ink);border:1px solid var(--line);font-weight:600}
+  .env{font-family:ui-monospace,monospace;font-size:11px;background:#f3f3f5;border-radius:8px;padding:10px;word-break:break-all;white-space:pre-wrap}
+  .tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;margin:2px 4px 2px 0}
+  .on{background:#e6f7ec;color:#0a7d39} .off{background:#f3f3f5;color:#999}
+  .banner{border-radius:10px;padding:12px;font-size:14px;font-weight:600;margin:0 0 12px}
+  .banner.warn{background:#fdecec;color:#b42318;border:1px solid #f3c0c0}
+  .banner.ok{background:#e6f7ec;color:#0a7d39;border:1px solid #b7e3c6}
+  .row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);margin-top:8px}
+  .row input{width:auto}
+  #log{font-family:ui-monospace,monospace;font-size:11px;background:#1c1c1e;color:#4ade80;border-radius:8px;padding:10px;min-height:110px;white-space:pre-wrap;word-break:break-all}
+  .hint{font-size:11px;color:var(--ink2);margin:6px 0 0}
+  input.f{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px;margin-top:6px}
+  label{display:block;font-size:12px;color:var(--ink2);margin:8px 0 0}
+</style>
+</head>
+<body>
+<h1>외부 브라우저 탈출 테스트 🚪 <span style="font-size:11px;color:#999">v5 · 실제 적용용</span></h1>
+<p class="sub">카톡으로 이 링크를 본인에게 보내 → 카톡 안에서 열고 → 탈출 버튼 → 외부 브라우저에서 리뷰 링크가 정상 동작하는지 확인. <b>iOS·AOS 둘 다</b> 테스트하세요.</p>
+
+<div id="banner"></div>
+
+<div class="card">
+  <h2>현재 환경</h2>
+  <div id="flags"></div>
+  <div class="env" id="ua"></div>
+</div>
+
+<div class="card" id="escCard">
+  <h2>① 탈출 (카톡 → 기본 브라우저)</h2>
+  <button class="b-esc" onclick="escape()">🚪 기본 브라우저로 열기</button>
+  <button class="b-line" onclick="trap()">🔒 (비교) 탈출 없이 네이버 바로 열기 — 갇힘 확인</button>
+  <div class="row"><input type="checkbox" id="auto"><label for="auto" style="margin:0">페이지 열리면 <b>자동 탈출</b> (기본: 수동)</label></div>
+  <p class="hint">실제 적용 땐 보통 배너+버튼(수동)이 안전. 자동은 유저 제스처 없이 막힐 수 있어 비교용으로만.</p>
+</div>
+
+<div class="card">
+  <h2>② 탈출 후 리뷰 링크 동작 확인 (생짜 window.open)</h2>
+  <label>네이버 placeId</label><input class="f" id="nid" placeholder="32240956">
+  <label>카카오 placeId</label><input class="f" id="kid" placeholder="10332413">
+  <label>구글 placeId</label><input class="f" id="gid" placeholder="ChIJ...">
+  <button class="b-naver" onclick="openReview('naver_now')">네이버 — 현행 코드 (/my/checkin)</button>
+  <button class="b-naver" style="opacity:.85" onclick="openReview('naver_fix')">네이버 — 개선안 (place/{id}/review)</button>
+  <button class="b-kakao" onclick="openReview('kakao')">카카오 (place/{id}#review)</button>
+  <button class="b-google" onclick="openReview('google')">구글 (writereview 유니버설)</button>
+  <p class="hint">외부 브라우저에선 이 링크들이 앱(설치시)으로 알아서 뜹니다. 카톡 안에서 누르면 갇히는 것과 비교해보세요.</p>
+</div>
+
+<div class="card">
+  <h2>로그</h2>
+  <div id="log"></div>
+</div>
+
+<script>
+  var UA=navigator.userAgent;
+  var isKakao=/KAKAOTALK/i.test(UA);
+  var isIOS=/iPhone|iPad|iPod/i.test(UA)||(/Macintosh/.test(UA)&&'ontouchend' in document);
+  var isAOS=/Android/i.test(UA);
+  function log(m){var l=document.getElementById('log');var t=new Date().toLocaleTimeString();l.textContent="["+t+"] "+m+"\n"+l.textContent;}
+  function tag(on,n){return '<span class="tag '+(on?'on':'off')+'">'+n+': '+(on?'YES':'no')+'</span>';}
+  function enc(s){return encodeURIComponent(s);}
+  function val(id){return (document.getElementById(id).value||'').trim();}
+
+  function reviewUrl(t){
+    var n=val('nid'),k=val('kid'),g=val('gid');
+    switch(t){
+      case 'naver_now': return 'https://m.place.naver.com/my/checkin';                 // 현행 실서비스 코드
+      case 'naver_fix': return 'https://m.place.naver.com/place/'+n+'/review/visitor';  // 개선안: 병원 직행
+      case 'kakao':     return 'https://place.map.kakao.com/'+k+'#review';
+      case 'google':    return 'https://search.google.com/local/writereview?placeid='+g;
+    }
+  }
+
+  // ★ 핵심: 카톡 → 기본 브라우저로 탈출 (이 스킴 한 줄이 전부)
+  function escape(){
+    var target=location.origin+location.pathname+"?escaped=1&nid="+enc(val('nid'))+"&kid="+enc(val('kid'))+"&gid="+enc(val('gid'));
+    if(isKakao){ log("openExternal → 기본 브라우저로 탈출"); location.href="kakaotalk://web/openExternal?url="+enc(target); }
+    else { log("카톡 아님(이미 브라우저). 그냥 이동."); location.href=target; }
+  }
+  function trap(){ log("탈출 없이 window.open (카톡이면 갇힘 확인용)"); window.open(reviewUrl('naver_fix'),'_blank'); }
+  function openReview(t){ var u=reviewUrl(t); log((isKakao?"⚠️카톡 안에서 ":"")+"open: "+u); window.open(u,'_blank'); }
+
+  (function(){
+    document.getElementById('ua').textContent=UA;
+    document.getElementById('flags').innerHTML=tag(isKakao,'KakaoTalk')+tag(isIOS,'iOS')+tag(isAOS,'Android');
+    var q=new URLSearchParams(location.search);
+    document.getElementById('nid').value=q.get('nid')||'32240956';
+    document.getElementById('kid').value=q.get('kid')||'10332413';
+    document.getElementById('gid').value=q.get('gid')||'ChIJN1t_tDeuEmsRUsoyG83frY4';
+    var b=document.getElementById('banner');
+    if(q.get('escaped')){
+      b.className='banner ok'; b.textContent='✅ 외부 브라우저로 나왔습니다. 이제 아래 리뷰 링크가 앱/웹으로 정상 동작해야 합니다. (위 KakaoTalk: no 확인)';
+      log("✅ 탈출 성공 진입"); document.getElementById('escCard').style.display='none';
+    } else if(isKakao){
+      b.className='banner warn'; b.textContent='⚠️ 카카오톡 인앱브라우저입니다. 리뷰를 남기려면 먼저 기본 브라우저로 나가야 합니다.';
+      if(document.getElementById('auto').checked){}   // 자동체크는 로드 후엔 항상 off, 수동 유지
+    } else {
+      b.className='banner ok'; b.textContent='✅ 일반 브라우저입니다. (카톡 아님) — 리뷰 링크 바로 테스트 가능';
+    }
+    // 자동 탈출 옵션: 카톡이고 escaped 아님 + auto 체크 시. (체크는 로드시 항상 off라 실질 수동. 필요하면 아래 주석 해제)
+    // if(isKakao && !q.get('escaped')) setTimeout(function(){ if(document.getElementById('auto').checked) escape(); }, 400);
+  })();
+</script>
+</body>
+</html>
